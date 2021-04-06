@@ -1,0 +1,10 @@
+version: '3.3'
+
+services:
+
+  updater:
+    build: .
+    restart: on-failure
+    container_name: updater
+    networks:
+      aappanavypar-backend:
