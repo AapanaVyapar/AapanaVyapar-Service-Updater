@@ -2,14 +2,12 @@ package main
 
 import (
 	"aapanavyapar-service-viewprovider/configurations/mongodb"
-	"aapanavyapar-service-viewprovider/helpers"
 	services "aapanavyapar-service-viewprovider/startup-tasks"
 	"aapanavyapar-service-viewprovider/structs"
 	"context"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	_ "github.com/joho/godotenv/autoload"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
@@ -129,55 +127,6 @@ func SyncWithBasicCategories(dataBase *services.DataSources, group *sync.WaitGro
 //	}
 //}
 
-/*
-	In Below Function We Only Care For Context Error And This Is Because If Database Failed Then Message Should Not Get Acknowledge
-	Else If There Is Some User Not Exist Or Other Operation Related Error We No Need To Care For That Because That Is Related To User Input Process.
-	This Will Allow Us To Make Stream Empty From Bad Messages.
-*/
-func PerformAddToFavorite(ctx context.Context, dataBase *services.DataSources, val *redis.XMessage) error {
-
-	uId := val.Values["uId"].(string)
-	prodId := val.Values["prodId"].(string)
-	operation := val.Values["operation"].(string)
-
-	fmt.Println(uId)
-	fmt.Println(prodId)
-	fmt.Println(operation)
-
-	productId, err := primitive.ObjectIDFromHex(prodId)
-	if err != nil {
-		dataBase.Cash.Cash.XAck(ctx, os.Getenv("REDIS_STREAM_FAV_NAME"), os.Getenv("REDIS_STREAM_FAV_GROUP"), val.ID)
-		dataBase.Cash.Cash.XDel(ctx, os.Getenv("REDIS_STREAM_FAV_NAME"), val.ID)
-		return nil
-	}
-
-	dataContext, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*4))
-
-	if operation == "+" {
-		err := dataBase.Data.AddToFavoritesUserData(dataContext, uId, productId)
-		fmt.Println(err)
-		if err != nil && helpers.ContextError(dataContext) != nil {
-			cancel()
-			return err
-		}
-
-	} else {
-		err := dataBase.Data.DelFromFavoritesUserData(dataContext, uId, productId)
-		if err != nil && helpers.ContextError(dataContext) != nil {
-			fmt.Println(err)
-			cancel()
-			return err
-		}
-
-	}
-
-	fmt.Println("Done Acknowledge")
-	dataBase.Cash.Cash.XAck(ctx, os.Getenv("REDIS_STREAM_FAV_NAME"), os.Getenv("REDIS_STREAM_FAV_GROUP"), val.ID)
-	dataBase.Cash.Cash.XDel(ctx, os.Getenv("REDIS_STREAM_FAV_NAME"), val.ID)
-	cancel()
-	return nil
-}
-
 func SyncWithAddToFavorite(ctx context.Context, dataBase *services.DataSources, checkBackLog bool, group *sync.WaitGroup) {
 	lastId := "0"
 	defer group.Done()
@@ -225,7 +174,7 @@ func SyncWithAddToFavorite(ctx context.Context, dataBase *services.DataSources, 
 		var val redis.XMessage
 		fmt.Println("\n\n\n NEW : ", lastId)
 		for _, val = range data[0].Messages {
-			err = PerformAddToFavorite(ctx, dataBase, &val)
+			err = dataBase.PerformAddToFavorite(ctx, &val)
 			if err != nil {
 				fmt.Println("Context Error Please Check For Data Base Connectivity, Network Error Or Any Other Dependency Problem")
 				checkBackLog = true
