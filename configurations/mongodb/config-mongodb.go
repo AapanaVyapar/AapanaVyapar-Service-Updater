@@ -17,7 +17,7 @@ func InitMongo() *mongo.Client {
 		Password: os.Getenv("MONGODB_PASSWORD"),
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("MONGODB_URI")).SetAuth(credential))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("MONGODB_URI")).SetAuth(credential).SetMaxPoolSize(100))
 	if err != nil {
 		panic(err)
 	}
