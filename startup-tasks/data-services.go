@@ -138,6 +138,87 @@ func (dataBase *MongoDataBase) IsExistProductExist(context context.Context, key 
 
 }
 
+func (dataBase *MongoDataBase) AddToCartUserData(context context.Context, userId string, productId primitive.ObjectID) error {
+
+	//Checking In Cash For Existence Of Product So No Need To Check In DataBase And If Some Inconsistency Occurs
+	//Then What When User Add Other Items In Cart It Get Automatically Deleted And In Front End We Make That Product Id Invisible If Product Not Exist
+	//
+	//if !dataBase.IsExistProductExist(context, "_id", productId) {
+	//	return fmt.Errorf("product does not exist")
+	//}
+	//
+
+	userData := mongodb.OpenUserDataCollection(dataBase.Data)
+
+	// All Database Operation on single document are atomic in mongodb
+	//dataBase.mutex.Lock()
+	//defer dataBase.mutex.Unlock()
+
+	result := userData.FindOne(context, bson.M{"_id": userId, "cart.products": productId})
+
+	// Error will be thrown if favorites is null or product is not in favorites in both cases we have to just add product
+	if result.Err() != nil {
+		fmt.Println("CART : ", result.Err())
+		res, err := userData.UpdateOne(context,
+			bson.M{
+				"_id": userId,
+			},
+			bson.D{
+				{"$push",
+					bson.M{
+						"cart.products": bson.M{
+							"$each":  bson.A{productId},
+							"$slice": -15,
+						},
+					},
+				},
+			},
+			options.Update().SetUpsert(true),
+		)
+		if err != nil {
+			return err
+		}
+
+		if res.ModifiedCount > 0 || res.MatchedCount > 0 || res.UpsertedCount > 0 {
+			return nil
+		}
+
+		return fmt.Errorf("unable to add to cart")
+	}
+
+	return fmt.Errorf("alredy exist in cart")
+}
+
+func (dataBase *MongoDataBase) DelFromCartUserData(context context.Context, userId string, productId primitive.ObjectID) error {
+
+	userData := mongodb.OpenUserDataCollection(dataBase.Data)
+
+	// All Database Operation on single document are atomic in mongodb
+	//dataBase.mutex.Lock()
+	//defer dataBase.mutex.Unlock()
+
+	result, err := userData.UpdateOne(context,
+		bson.M{
+			"_id": userId,
+		},
+		bson.M{
+			"$pull": bson.M{
+				"cart.products": productId,
+			},
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if result.ModifiedCount > 0 || result.MatchedCount > 0 {
+		return nil
+	}
+
+	return fmt.Errorf("unable to delete from cart")
+}
+
 func (dataBase *MongoDataBase) AddToFavoritesUserData(context context.Context, userId string, productId primitive.ObjectID) error {
 
 	//if err := dataBase.IsExistProductExist(context, "_id", productId); err != nil {
@@ -146,8 +227,9 @@ func (dataBase *MongoDataBase) AddToFavoritesUserData(context context.Context, u
 
 	userData := mongodb.OpenUserDataCollection(dataBase.Data)
 
-	dataBase.mutex.Lock()
-	defer dataBase.mutex.Unlock()
+	// All Database Operation on single document are atomic in mongodb
+	//dataBase.mutex.Lock()
+	//defer dataBase.mutex.Unlock()
 
 	result := userData.FindOne(context, bson.M{"_id": userId, "favorites.products": productId})
 
@@ -176,7 +258,7 @@ func (dataBase *MongoDataBase) AddToFavoritesUserData(context context.Context, u
 			return err
 		}
 
-		if res.ModifiedCount > 0 || res.MatchedCount > 0 {
+		if res.ModifiedCount > 0 || res.MatchedCount > 0 || res.UpsertedCount > 0 {
 			return nil
 		}
 
@@ -190,8 +272,9 @@ func (dataBase *MongoDataBase) DelFromFavoritesUserData(context context.Context,
 
 	userData := mongodb.OpenUserDataCollection(dataBase.Data)
 
-	dataBase.mutex.Lock()
-	defer dataBase.mutex.Unlock()
+	// All Database Operation on single document are atomic in mongodb
+	//dataBase.mutex.Lock()
+	//defer dataBase.mutex.Unlock()
 
 	result, err := userData.UpdateOne(context,
 		bson.M{

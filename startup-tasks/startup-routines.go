@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"os"
 	"strings"
 )
 
@@ -38,15 +37,40 @@ func (dataSource *DataSources) InitStartup(context context.Context) {
 		panic(err)
 	}
 
-	err = dataSource.Cash.Cash.XGroupCreateMkStream(context, os.Getenv("REDIS_STREAM_FAV_NAME"), os.Getenv("REDIS_STREAM_FAV_GROUP"), "$").Err()
+	//err = dataSource.InitFavStream(context)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//err = dataSource.InitCartStream(context)
+	//if err != nil {
+	//	panic(err)
+	//}
+
+}
+
+func (dataSource *DataSources) InitCartStream(ctx context.Context) error {
+	err := dataSource.Cash.CreateCartStream(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exist") {
-			fmt.Println("Already Exist")
-			return
+			fmt.Println("Cart Already Exist")
+			return nil
 		}
-		panic(err)
+		return err
 	}
+	return nil
+}
 
+func (dataSource *DataSources) InitFavStream(ctx context.Context) error {
+	err := dataSource.Cash.CreateFavStream(ctx)
+	if err != nil {
+		if strings.Contains(err.Error(), "already exist") {
+			fmt.Println("Fav Already Exist")
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func (dataSource *DataSources) LoadBasicCategoriesInCash(ctx context.Context) error {
