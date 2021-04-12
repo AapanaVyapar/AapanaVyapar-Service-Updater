@@ -1,8 +1,8 @@
 package services
 
 import (
-	"aapanavyapar-service-viewprovider/configurations/mongodb"
-	"aapanavyapar-service-viewprovider/structs"
+	"aapanavyapar-service-updater/configurations/mongodb"
+	"aapanavyapar-service-updater/structs"
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"

@@ -1,7 +1,7 @@
 package services
 
 import (
-	"aapanavyapar-service-viewprovider/configurations/redisdb"
+	"aapanavyapar-service-updater/configurations/redisdb"
 	"context"
 	"github.com/go-redis/redis/v8"
 	"google.golang.org/grpc/codes"

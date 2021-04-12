@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option go_package = ".;pb";
+option java_multiple_files = true;
+option java_package = "com.aapanavyapar.aapanavyapar.services";
+
+message Address {
+  string FullName = 1;
+  string HouseDetails = 2;
+  string StreetDetails = 3;
+  string LandMark = 4;
+  string PinCode = 5;
+  string City = 6;
+  string State = 7;
+  string Country = 8;
+  string PhoneNo = 9;
+}
+
+message Location {
+  string Longitude = 10;
+  string Latitude = 11;
+}
+
+message OperationalHours {
+  repeated string Sunday = 12;
+  repeated string Monday = 13;
+  repeated string Tuesday = 14;
+  repeated string Wednesday = 15;
+  repeated string Thursday = 16;
+  repeated string Friday = 17;
+  repeated string Saturday = 18;
+}
+
+enum Category{
+  SPORTS_AND_FITNESS = 0;
+  ELECTRIC = 1;
+  DEVOTIONAL = 2;
+  AGRICULTURAL = 3;
+  WOMENS_CLOTHING = 4;
+  WOMENS_ACCESSORIES = 5;
+  MENS_CLOTHING = 6;
+  MENS_ACCESSORIES = 7;
+  HOME_GADGETS = 8;
+  TOYS = 9;
+  ELECTRONIC = 10;
+  DECORATION = 11;
+
+}
+
+enum Ratings {
+  VERY_BAD = 0;
+  BAD = 1;
+  OK = 2;
+  GOOD = 3;
+  VERY_GOOD = 4;
+
+}
+
+enum Status {
+  PENDING = 0;
+  CANCELED = 1;
+  CONFORM = 2;
+  DISPATCHED = 3;
+  DELIVERED = 4;
+
+}

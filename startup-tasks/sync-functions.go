@@ -1,110 +1,129 @@
 package services
 
 import (
-	"aapanavyapar-service-viewprovider/helpers"
+	"aapanavyapar-service-updater/configurations/mongodb"
+
+	"aapanavyapar-service-updater/structs"
 	"context"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"sync"
 )
 
-/*
-	In Below Function We Only Care For Context Error And This Is Because If Database Failed Then Message Should Not Get Acknowledge
-	Else If There Is Some User Not Exist Or Other Operation Related Error We No Need To Care For That Because That Is Related To User Input Process.
-	This Will Allow Us To Make Stream Empty From Bad Messages.
-*/
-func (dataSource *DataSources) PerformAddToFavorite(ctx context.Context, val *redis.XMessage) error {
+func SyncWithBasicCategories(dataBase *DataSources, group *sync.WaitGroup) {
+	defaultDataCollection := mongodb.OpenDefaultDataCollection(dataBase.Data.Data)
 
-	uId := val.Values["uId"].(string)
-	prodId := val.Values["prodId"].(string)
-	operation := val.Values["operation"].(string)
+	defer group.Done()
 
-	fmt.Println("FAV : ", uId)
-	fmt.Println("FAV : ", prodId)
-	fmt.Println("FAV : ", operation)
-
-	productId, err := primitive.ObjectIDFromHex(prodId)
+	defaultStream, err := defaultDataCollection.Watch(context.TODO(), mongo.Pipeline{}, options.ChangeStream().SetFullDocument(options.UpdateLookup))
 	if err != nil {
-		dataSource.Cash.AckFavToStream(ctx, val)
-		dataSource.Cash.DelFromFavStream(ctx, val)
-		return nil
+		panic(err)
 	}
+	defer defaultStream.Close(context.TODO())
 
-	dataContext, cancel := context.WithDeadline(ctx, time.Now().Add(time.Minute))
-
-	if operation == "+" {
-		err := dataSource.Data.AddToFavoritesUserData(dataContext, uId, productId)
-		fmt.Println("FAV : ", err)
-		if err != nil && helpers.ContextError(dataContext) != nil {
-			cancel()
-			return err
+	for defaultStream.Next(context.TODO()) {
+		var data structs.BasicCategoryStreamDecoding
+		if err = defaultStream.Decode(&data); err != nil {
+			panic(err)
 		}
+		fmt.Printf("Basic Category Stream : %v\n", data)
 
-	} else {
-		err := dataSource.Data.DelFromFavoritesUserData(dataContext, uId, productId)
-		if err != nil && helpers.ContextError(dataContext) != nil {
-			fmt.Println("FAV : ", err)
-			cancel()
-			return err
+		if data.OperationType == "insert" || data.OperationType == "update" || data.OperationType == "replace" {
+			fmt.Println(data.FullDocument)
+			dataBase.Cash.Cash.HSet(context.TODO(), "categories", data.FullDocument.Category, data.FullDocument.Marshal())
+
+		} else if data.OperationType == "delete" {
+			dataBase.Cash.Cash.HDel(context.TODO(), "categories", data.DocumentKey.Id)
+
 		}
-
+		//var data bson.M
+		//if err = defaultStream.Decode(&data); err != nil {
+		//	panic(err)
+		//}
+		//fmt.Printf("%v\n", data)
+		//
+		//operationType := data["operationType"].(string)
+		//
+		//if operationType == "insert" || operationType == "update" || operationType == "replace" {
+		//	fullDocument := data["fullDocument"].(bson.M)
+		//	category := fullDocument["_id"].(string)
+		//	subCategory := fullDocument["sub_categories"].(bson.A)
+		//
+		//	array := make([]string, len(subCategory))
+		//	for i, ele := range subCategory {
+		//		array[i] = ele.(string)
+		//	}
+		//
+		//	categoriesData := structs.BasicCategoriesData{
+		//		Category:      category,
+		//		SubCategories: array,
+		//	}
+		//
+		//	dataBase.Redis.HSet(context.TODO(), "categories", category, categoriesData.Marshal())
+		//
+		//} else if operationType == "delete" {
+		//	documentKey := data["documentKey"].(bson.M)
+		//	id := documentKey["_id"].(string)
+		//
+		//	dataBase.Redis.HDel(context.TODO(), "categories", id)
+		//
+		//}
 	}
-
-	fmt.Println("FAV : Done Acknowledge")
-	dataSource.Cash.AckFavToStream(ctx, val)
-	dataSource.Cash.DelFromFavStream(ctx, val)
-	fmt.Println("FAV :  ", time.Now().UTC())
-	cancel()
-	return nil
 }
 
-/*
-	In Below Function We Only Care For Context Error And This Is Because If Database Failed Then Message Should Not Get Acknowledge
-	Else If There Is Some User Not Exist Or Other Operation Related Error We No Need To Care For That Because That Is Related To User Input Process.
-	This Will Allow Us To Make Stream Empty From Bad Messages.
-*/
-func (dataSource *DataSources) PerformAddToCart(ctx context.Context, val *redis.XMessage) error {
+func SyncWithShops(dataBase *DataSources, group *sync.WaitGroup) {
+	shopDataCollection := mongodb.OpenShopDataCollection(dataBase.Data.Data)
 
-	uId := val.Values["uId"].(string)
-	prodId := val.Values["prodId"].(string)
-	operation := val.Values["operation"].(string)
+	defer group.Done()
 
-	fmt.Println("CART : ", uId)
-	fmt.Println("CART : ", prodId)
-	fmt.Println("CART : ", operation)
-
-	productId, err := primitive.ObjectIDFromHex(prodId)
+	shopStream, err := shopDataCollection.Watch(context.TODO(), mongo.Pipeline{}, options.ChangeStream().SetFullDocument(options.UpdateLookup))
 	if err != nil {
-		dataSource.Cash.AckCartToStream(ctx, val)
-		dataSource.Cash.DelFromCartStream(ctx, val)
-		return nil
+		panic(err)
 	}
+	defer shopStream.Close(context.TODO())
 
-	dataContext, cancel := context.WithDeadline(ctx, time.Now().Add(time.Minute))
-
-	if operation == "+" {
-		err := dataSource.Data.AddToCartUserData(dataContext, uId, productId)
-		fmt.Println("CART : ", err)
-		if err != nil && helpers.ContextError(dataContext) != nil {
-			cancel()
-			return err
+	for shopStream.Next(context.TODO()) {
+		var data structs.ShopStreamDecoding
+		if err = shopStream.Decode(&data); err != nil {
+			panic(err)
 		}
 
-	} else {
-		err := dataSource.Data.DelFromCartUserData(dataContext, uId, productId)
-		if err != nil && helpers.ContextError(dataContext) != nil {
-			fmt.Println("CART : ", err)
-			cancel()
-			return err
+		//fmt.Printf("Shop Data Struct Decode : %v\n", data)
+		var dataTest bson.M
+		if err = shopStream.Decode(&dataTest); err != nil {
+			panic(err)
 		}
+		//fmt.Printf("Shop Data Bson Decode : %v\n", dataTest)
 
+		if data.OperationType == "insert" {
+			fmt.Println(data.FullDocument.Address)
+			fmt.Println(data.FullDocument.Location)
+			fmt.Println(data.FullDocument.Category)
+			fmt.Println(data.FullDocument.OperationalHours)
+			fmt.Println(data.FullDocument.Ratings)
+
+			err = dataBase.Cash.AddShopDataToCash(context.TODO(), data.FullDocument.ShopId.Hex(), data.FullDocument.Marshal())
+			array := structs.CashStructureProductArray{
+				Products: []string{},
+			}
+
+			err = dataBase.Cash.AddShopProductMapDataToCash(context.TODO(), data.FullDocument.ShopId.Hex(), array.Marshal())
+			if err != nil {
+				//return err
+			}
+
+		} else if data.OperationType == "update" || data.OperationType == "replace" {
+			fmt.Println(data.UpdateDescription.UpdatedFields.Address)
+			fmt.Println(data.UpdateDescription.UpdatedFields.Location)
+			fmt.Println(data.UpdateDescription.UpdatedFields.Category)
+			fmt.Println(data.UpdateDescription.UpdatedFields.OperationalHours)
+			fmt.Println(data.UpdateDescription.UpdatedFields.Ratings)
+
+		} else if data.OperationType == "delete" {
+			dataBase.Cash.Cash.HDel(context.TODO(), "shops", data.DocumentKey.Id.String())
+
+		}
 	}
-
-	fmt.Println("CART :  Done Acknowledge")
-	dataSource.Cash.AckCartToStream(ctx, val)
-	dataSource.Cash.DelFromCartStream(ctx, val)
-	fmt.Println("CART :  ", time.Now().UTC())
-	cancel()
-	return nil
 }

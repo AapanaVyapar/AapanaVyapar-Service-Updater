@@ -1,12 +1,10 @@
 package services
 
 import (
-	"aapanavyapar-service-viewprovider/structs"
+	"aapanavyapar-service-updater/structs"
 	"context"
-	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strings"
 )
 
 type DataSources struct {
@@ -37,40 +35,6 @@ func (dataSource *DataSources) InitStartup(context context.Context) {
 		panic(err)
 	}
 
-	//err = dataSource.InitFavStream(context)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//err = dataSource.InitCartStream(context)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-}
-
-func (dataSource *DataSources) InitCartStream(ctx context.Context) error {
-	err := dataSource.Cash.CreateCartStream(ctx)
-	if err != nil {
-		if strings.Contains(err.Error(), "already exist") {
-			fmt.Println("Cart Already Exist")
-			return nil
-		}
-		return err
-	}
-	return nil
-}
-
-func (dataSource *DataSources) InitFavStream(ctx context.Context) error {
-	err := dataSource.Cash.CreateFavStream(ctx)
-	if err != nil {
-		if strings.Contains(err.Error(), "already exist") {
-			fmt.Println("Fav Already Exist")
-			return nil
-		}
-		return err
-	}
-	return nil
 }
 
 func (dataSource *DataSources) LoadBasicCategoriesInCash(ctx context.Context) error {

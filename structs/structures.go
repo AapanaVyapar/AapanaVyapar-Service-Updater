@@ -1,12 +1,42 @@
 package structs
 
 import (
-	"aapanavyapar-service-viewprovider/constants"
+	"aapanavyapar-service-updater/pb"
 	"encoding/json"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
+
+type UserData struct {
+	UserId    string                  `bson:"_id" json:"_id" validate:"required"`
+	UserName  string                  `bson:"user_name" json:"user_name" validate:"required"`
+	Address   *Address                `bson:"address,omitempty" json:"address"`
+	Cart      *ProductIdsForCart      `bson:"cart,omitempty" json:"cart"`
+	Favorites *ProductIdsForFavAndOrd `bson:"favorites,omitempty" json:"favorites"`
+	Orders    *ProductIdsForFavAndOrd `bson:"orders,omitempty" json:"orders"`
+}
+
+type ProductIdsForCart struct {
+	Products []primitive.ObjectID `bson:"products,omitempty" json:"products"`
+}
+
+type ProductIdsForFavAndOrd struct {
+	Products []primitive.ObjectID `bson:"products,omitempty" json:"products"`
+}
+
+type OrderData struct {
+	OrderId           primitive.ObjectID `bson:"_id,omitempty" json:"_id"`
+	UserId            string             `bson:"user_id" json:"user_id" validate:"required"`
+	Status            pb.Status          `bson:"status" json:"status" validate:"required"`
+	ProductId         primitive.ObjectID `bson:"product_id" json:"product_id" validate:"required"`
+	DeliveryTimeStamp time.Time          `bson:"delivery_time_stamp" json:"delivery_time_stamp" validate:"required"`
+	OrderTimeStamp    time.Time          `bson:"order_time_stamp" json:"order_time_stamp" validate:"required"`
+	Address           *Address           `bson:"address,omitempty" json:"address" validate:"required"`
+	Price             float32            `bson:"price" json:"price" validate:"required"`
+	DeliveryCost      float32            `bson:"delivery_cost" json:"delivery_cost" validate:"required"`
+	Quantity          uint32             `bson:"quantity" json:"quantity" validate:"required"`
+}
 
 type Address struct {
 	FullName      string `bson:"full_name" json:"name" validate:"required,min=2,max=100"`
@@ -36,51 +66,68 @@ type OperationalHours struct {
 }
 
 type Rating struct {
-	UserId    string            `bson:"user_id" json:"user_id" validate:"required"`
-	UserName  string            `bson:"user_name" json:"user_name" validate:"required"`
-	Comment   string            `bson:"comment" json:"comment" validate:"required,max=100"`
-	Rating    constants.Ratings `bson:"rating" json:"rating" validate:"required"`
-	Timestamp time.Time         `bson:"timestamp" json:"timestamp" validate:"required"`
+	UserId    string     `bson:"user_id" json:"user_id" validate:"required"`
+	UserName  string     `bson:"user_name" json:"user_name" validate:"required"`
+	Comment   string     `bson:"comment" json:"comment" validate:"required,max=100"`
+	Rating    pb.Ratings `bson:"rating" json:"rating" validate:"required"`
+	Timestamp time.Time  `bson:"timestamp" json:"timestamp" validate:"required"`
 }
 
 type ShopData struct {
-	ShopId              primitive.ObjectID     `bson:"_id,omitempty" json:"_id"`
-	ShopName            string                 `bson:"shop_name" json:"shop_name" validate:"required,max=50"`
-	ShopKeeperName      string                 `bson:"shop_keeper_name" json:"shop_keeper_name" validate:"required,min=2,max=100"`
-	Images              []string               `bson:"images" json:"images" validate:"required"`
-	PrimaryImage        string                 `bson:"primary_image" json:"primary_images" validate:"required,url"`
-	Address             *Address               `bson:"address" json:"address" validate:"required"`
-	Location            *Location              `bson:"location" json:"location" validate:"required"`
-	SectorNo            int64                  `bson:"sector_no" json:"sector_no"`
-	Category            []constants.Categories `bson:"category" json:"category" validate:"required"`
-	BusinessInformation string                 `bson:"business_information" json:"business_information" validate:"required,max=500"`
-	OperationalHours    *OperationalHours      `bson:"operational_hours" json:"operational_hours" validate:"required"`
-	Ratings             *[]Rating              `bson:"ratings,omitempty" json:"ratings"`
-	Timestamp           time.Time              `bson:"timestamp" json:"timestamp" validate:"required"`
+	ShopId              string            `bson:"_id" json:"_id" validate:"required"`
+	ShopName            string            `bson:"shop_name" json:"shop_name" validate:"required,max=50"`
+	ShopKeeperName      string            `bson:"shop_keeper_name" json:"shop_keeper_name" validate:"required,min=2,max=100"`
+	Images              []string          `bson:"images" json:"images" validate:"required"`
+	PrimaryImage        string            `bson:"primary_image" json:"primary_images" validate:"required,url"`
+	Address             *Address          `bson:"address" json:"address" validate:"required"`
+	Location            *Location         `bson:"location" json:"location" validate:"required"`
+	SectorNo            int32             `bson:"sector_no" json:"sector_no"`
+	Category            []pb.Category     `bson:"category" json:"category" validate:"required"`
+	BusinessInformation string            `bson:"business_information" json:"business_information" validate:"required,max=500"`
+	OperationalHours    *OperationalHours `bson:"operational_hours" json:"operational_hours" validate:"required"`
+	Ratings             *[]Rating         `bson:"ratings,omitempty" json:"ratings"`
+	Timestamp           time.Time         `bson:"timestamp" json:"timestamp" validate:"required"`
 }
 
 type ProductData struct {
-	ProductId        primitive.ObjectID     `bson:"_id,omitempty" json:"_id"`
-	ShopId           primitive.ObjectID     `bson:"shop_id" json:"shop_id" validate:"required"`
-	Title            string                 `bson:"title" json:"title" validate:"required"`
-	ShortDescription string                 `bson:"short_description" json:"short_description" validate:"required"`
-	Description      string                 `bson:"description" json:"description" validate:"required"`
-	ShippingInfo     string                 `bson:"shipping_info" json:"shipping_info" validate:"required"`
-	Stock            uint32                 `bson:"stock" json:"stock"`
-	Price            float64                `bson:"price" json:"price" validate:"required"`
-	Offer            uint8                  `bson:"offer" json:"offer" validate:"required,max=100"`
-	Images           []string               `bson:"images" json:"images" validate:"required"`
-	Category         []constants.Categories `bson:"category" json:"category" validate:"required"`
-	Timestamp        time.Time              `bson:"timestamp" json:"timestamp" validate:"required"`
+	ProductId        primitive.ObjectID `bson:"_id,omitempty" json:"_id"`
+	ShopId           string             `bson:"shop_id" json:"shop_id" validate:"required"`
+	ShopName         string             `bson:"shop_name" json:"shop_name"`
+	Title            string             `bson:"title" json:"title" validate:"required"`
+	ShortDescription string             `bson:"short_description" json:"short_description" validate:"required"`
+	Description      string             `bson:"description" json:"description" validate:"required"`
+	ShippingInfo     string             `bson:"shipping_info" json:"shipping_info" validate:"required"`
+	Stock            uint32             `bson:"stock" json:"stock" validate:"max=4294967290"`
+	Likes            uint64             `bson:"likes" json:"likes" validate:"max=4294967290"`
+	Price            float32            `bson:"price" json:"price" validate:"required"`
+	Offer            uint32             `bson:"offer" json:"offer" validate:"required,max=100"`
+	Images           []string           `bson:"images" json:"images" validate:"required"`
+	Category         []pb.Category      `bson:"category" json:"category" validate:"required"`
+	Timestamp        time.Time          `bson:"timestamp" json:"timestamp" validate:"required"`
 }
 
-type CashStructureProductArray struct {
-	Products []string `json:"products"`
+type AnalyticalClickData struct {
+	ProductId primitive.ObjectID `bson:"product_id" json:"product_id" validate:"required"`
+	Timestamp time.Time          `bson:"timestamp" json:"timestamp" validate:"required"`
+	Category  []pb.Category      `bson:"category" json:"category" validate:"required"`
+}
+
+type MostVisited struct {
+	Product []AnalyticalClickData `bson:"product,omitempty" json:"product" validate:"required"`
+}
+
+type AnalyticalData struct {
+	UserId      string       `bson:"_id" json:"_id" validate:"required"`
+	MostVisited *MostVisited `bson:"most_visited,omitempty" json:"most_visited" validate:"required"`
 }
 
 type BasicCategoriesData struct {
 	Category      string   `bson:"_id" json:"_id" validate:"required"`
 	SubCategories []string `bson:"sub_categories,omitempty" json:"sub_categories" validate:"required"`
+}
+
+type CashStructureProductArray struct {
+	Products []string `json:"products"`
 }
 
 type ShopStreamDocumentKey struct {
